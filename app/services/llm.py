@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -15,6 +16,13 @@ from app.services.models import choose_chat_model
 
 class OpenRouterError(RuntimeError):
     pass
+
+
+def _affordable_tokens(body: str) -> int | None:
+    match = re.search(r"can only afford (\d+)", body)
+    if not match:
+        return None
+    return int(match.group(1))
 
 
 def _headers() -> dict[str, str]:
@@ -38,7 +46,7 @@ class OpenRouterChat:
         system: str,
         user: str,
         *,
-        max_tokens: int = 700,
+        max_tokens: int = 220,
         json_mode: bool = False,
         operation: str = "chat",
     ) -> str:
@@ -53,6 +61,7 @@ class OpenRouterChat:
             operation=operation,
             allow_fallback=True,
             allow_plain_retry=json_mode,
+            allow_credit_retry=True,
         )
 
     def _complete(
@@ -66,6 +75,7 @@ class OpenRouterChat:
         operation: str,
         allow_fallback: bool,
         allow_plain_retry: bool,
+        allow_credit_retry: bool,
     ) -> str:
         payload: dict[str, Any] = {
             "model": model,
@@ -103,7 +113,23 @@ class OpenRouterChat:
                 operation=operation,
                 allow_fallback=False,
                 allow_plain_retry=allow_plain_retry,
+                allow_credit_retry=allow_credit_retry,
             )
+        if response.status_code == 402 and allow_credit_retry:
+            affordable = _affordable_tokens(response.text)
+            if affordable is not None and affordable >= 32 and affordable < max_tokens:
+                logger.warning("lowering_max_tokens", requested=max_tokens, affordable=affordable)
+                return self._complete(
+                    model,
+                    system,
+                    user,
+                    max_tokens=affordable,
+                    json_mode=json_mode,
+                    operation=operation,
+                    allow_fallback=allow_fallback,
+                    allow_plain_retry=allow_plain_retry,
+                    allow_credit_retry=False,
+                )
         if response.status_code == 400 and json_mode and allow_plain_retry:
             return self._complete(
                 model,
@@ -114,11 +140,11 @@ class OpenRouterChat:
                 operation=operation,
                 allow_fallback=allow_fallback,
                 allow_plain_retry=False,
+                allow_credit_retry=allow_credit_retry,
             )
         if response.status_code >= 400:
-            raise OpenRouterError(
-                f"OpenRouter chat failed ({response.status_code}): {response.text[:400]}"
-            )
+            detail = re.sub(r"https://\S+", "[redacted-url]", response.text)[:300]
+            raise OpenRouterError(f"OpenRouter chat failed ({response.status_code}): {detail}")
         message = response.json()["choices"][0]["message"]
         content = message.get("content")
         if not content:
@@ -160,8 +186,9 @@ class OpenRouterEmbeddings:
             timeout=settings.LLM_TIMEOUT_SECONDS,
         )
         if response.status_code >= 400:
+            detail = re.sub(r"https://\S+", "[redacted-url]", response.text)[:300]
             raise OpenRouterError(
-                f"OpenRouter embeddings failed ({response.status_code}): {response.text[:400]}"
+                f"OpenRouter embeddings failed ({response.status_code}): {detail}"
             )
         data = sorted(response.json()["data"], key=lambda item: item["index"])
         vectors = [item["embedding"] for item in data]

@@ -74,6 +74,66 @@ def sparse_tf(text: str) -> tuple[list[int], list[float]]:
     return indices, values
 
 
+GENERIC_TOKENS = {
+    "northwind",
+    "community",
+    "bank",
+    "sample",
+    "loan",
+    "rate",
+    "annual",
+    "card",
+    "fee",
+    "fees",
+    "client",
+    "clients",
+    "amount",
+    "uzs",
+    "usd",
+    "banka",
+    "образце",
+    "образца",
+    "намуна",
+    "namuna",
+    "qancha",
+    "какова",
+    "какой",
+    "какая",
+    "какие",
+    "что",
+    "это",
+}
+
+
+def distinctive_tokens(text: str) -> list[str]:
+    return [
+        token
+        for token in tokenize(text)
+        if token not in STOPWORDS and token not in GENERIC_TOKENS and len(token) >= 4
+    ]
+
+
+def lexical_fallback(question: str, chunks: list[dict], limit: int = 4) -> list[dict]:
+    """Keep chunks that share distinctive tokens when the grader returns nothing.
+
+    A single short overlap is not enough, so an unseen product name does not
+    attach itself to a generic rate or fee paragraph.
+    """
+    wanted = distinctive_tokens(question)
+    if not wanted:
+        return []
+    kept: list[dict] = []
+    for chunk in chunks:
+        text = f"{chunk.get('title', '')}\n{chunk.get('text', '')}"
+        present = set(tokenize(text))
+        overlap = [token for token in wanted if token in present]
+        if len(overlap) >= 2 or any(len(token) >= 8 for token in overlap):
+            kept.append(chunk)
+        if len(kept) >= limit:
+            break
+    return kept
+
+
 def keyword_overlap(query: str, text: str) -> float:
     query_tokens = [tok for tok in tokenize(query) if tok not in STOPWORDS and len(tok) > 1]
     if not query_tokens:

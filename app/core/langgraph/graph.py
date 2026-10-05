@@ -8,6 +8,7 @@ from langgraph.graph import END, StateGraph
 
 from app.core.logging import logger
 from app.core.prompts import ANSWER_SYSTEM, FILTER_SYSTEM
+from app.services.sparse import lexical_fallback
 from app.services.store import Hit, VectorStore
 from app.utils.citations import append_missing_citations
 from app.utils.json_extract import parse_json_object
@@ -64,23 +65,22 @@ class RAGGraph:
         retrieved = state.get("retrieved") or []
         if not retrieved:
             return {"filtered": []}
-        lines = [
-            f"[{item['doc_id']} p.{item['page']} c{item['chunk_id']}] {item['text']}"
-            for item in retrieved
-        ]
+        lines = [_chunk_line(item) for item in retrieved[:4]]
         user = f"Question: {state['question']}\n\nChunks:\n" + "\n".join(lines)
         wanted: set[str] = set()
+        graded = False
         for attempt in range(2):
             try:
                 raw = self.chat.complete(
                     FILTER_SYSTEM,
                     user,
-                    max_tokens=300,
+                    max_tokens=160,
                     json_mode=True,
                     operation="filter",
                 )
                 parsed = parse_json_object(raw)
                 wanted = {str(item) for item in parsed.get("relevant", [])}
+                graded = True
                 break
             except Exception:
                 logger.warning("filter_parse_failed", attempt=attempt + 1)
@@ -90,6 +90,10 @@ class RAGGraph:
             key = f"{item['doc_id']}#{item['chunk_id']}"
             if key in wanted:
                 filtered.append(item)
+        if not filtered:
+            filtered = lexical_fallback(state["question"], retrieved)
+            if filtered:
+                logger.info("lexical_fallback_kept", kept=len(filtered), graded=graded)
         logger.info("filtered", kept=len(filtered), retrieved=len(retrieved))
         return {"filtered": filtered}
 
@@ -103,15 +107,12 @@ class RAGGraph:
                 "abstained": True,
                 "citations_appended": False,
             }
-        lines = [
-            f"[{item['doc_id']} p.{item['page']} c{item['chunk_id']}] {item['text']}"
-            for item in filtered
-        ]
+        lines = [_chunk_line(item) for item in filtered[:4]]
         user = f"Question: {state['question']}\n\nChunks:\n" + "\n".join(lines)
         answer = self.chat.complete(
             ANSWER_SYSTEM,
             user,
-            max_tokens=600,
+            max_tokens=220,
             operation="answer",
         )
         answer, appended = append_missing_citations(answer, sources)
@@ -121,6 +122,13 @@ class RAGGraph:
             "abstained": False,
             "citations_appended": appended,
         }
+
+
+def _chunk_line(item: dict) -> str:
+    text = item["text"]
+    if len(text) > 450:
+        text = text[:447] + "..."
+    return f"[{item['doc_id']} p.{item['page']} c{item['chunk_id']}] {text}"
 
 
 def _public_source(item: dict) -> dict:

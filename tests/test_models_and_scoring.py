@@ -3,9 +3,15 @@ from pathlib import Path
 
 import pytest
 
+from app.services.llm import _affordable_tokens
 from app.services.models import ModelNotFoundError, choose_chat_model
-from app.services.sparse import sparse_tf
+from app.services.sparse import lexical_fallback, sparse_tf
 from evals.scoring import context_precision, facts_present, number_tokens
+
+
+def test_affordable_token_parse() -> None:
+    assert _affordable_tokens("You requested up to 300 tokens, but can only afford 255.") == 255
+    assert _affordable_tokens("nope") is None
 
 
 def test_preferred_model_wins_when_listed() -> None:
@@ -20,6 +26,29 @@ def test_fallback_skips_missing_id_and_batch() -> None:
 def test_missing_luna_raises() -> None:
     with pytest.raises(ModelNotFoundError):
         choose_chat_model("openai/gpt-6-luna", {"openai/gpt-4o-mini"})
+
+
+def test_lexical_fallback_keeps_specific_facts_only() -> None:
+    chunk = {
+        "doc_id": "retail-loan-en",
+        "title": "Synthetic retail loan terms",
+        "text": (
+            "Early repayment has no fee after the first 6 months. "
+            "During the first 6 months the early repayment fee is 1.0% of the remaining principal."
+        ),
+    }
+    kept = lexical_fallback(
+        "During the first 6 months, what is the early repayment fee on a Northwind consumer cash loan?",
+        [chunk],
+    )
+    assert kept == [chunk]
+    assert (
+        lexical_fallback(
+            "What annual rate does the Northwind sample charge for car leasing?",
+            [chunk],
+        )
+        == []
+    )
 
 
 def test_sparse_indices_are_stable() -> None:

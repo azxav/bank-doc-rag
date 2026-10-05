@@ -44,7 +44,7 @@ def judge(chat: OpenRouterChat, question: str, answer: str, contexts: list[str])
     raw = chat.complete(
         JUDGE_SYSTEM,
         user,
-        max_tokens=200,
+        max_tokens=80,
         json_mode=True,
         operation="judge",
     )

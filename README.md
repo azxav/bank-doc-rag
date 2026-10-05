@@ -76,7 +76,27 @@ Metrics:
 - **Key-fact accuracy** checks that required figures appear as numeric tokens. **Abstention accuracy** is the share of unanswerable items that refused.
 
 <!-- EVAL_TABLE_START -->
-Test-split numbers are recorded after `make eval` in `evals/reports/test.json`. This checkout does not yet include a completed run.
+Ran `python -m evals.main --split val` on 2026-10-05. Chat model resolved to `openai/gpt-6-luna` (the requested id; no 404 fallback). Embeddings: `openai/text-embedding-3-small`. Search mode on every validation question: `hybrid`. 45 chunks indexed. The **test split did not run.**
+
+The key then stopped working. OpenRouter returned HTTP 402: first a completion-token cap ("can only afford 255"), then `Prompt tokens limit exceeded: 998 > 871`, then `Insufficient credits. This account never purchased credits.` A probe after the run got 402 for both a one-token embedding and a 16-token chat completion, so the test split could not be scored. Report file: `evals/reports/val.json`.
+
+Every validation answer abstained. On the calls that returned HTTP 200, the grader's relevant set was empty, so citation rate and key-fact accuracy are 0 because no answer was generated. That is a failure of this run, not a completed quality score. Abstention accuracy is 1.0 because the two unanswerable items also abstained. Faithfulness 0.667 and answer relevancy 1.000 are the mean of the **3** items the judge managed to score (5 judge calls failed). One of those three is an answerable question whose refusal was scored faithfulness 0.
+
+| Metric | Validation (n=8) | Test (n=32) |
+| --- | ---: | ---: |
+| Faithfulness | 0.667 (3 judged, 5 failed) | not run |
+| Answer relevancy | 1.000 (3 judged, 5 failed) | not run |
+| Context precision | 0.932 | not run |
+| Citation rate (answerable) | 0.000 | not run |
+| Model citation rate before the safety net | 0.000 | not run |
+| Key-fact accuracy (answerable) | 0.000 | not run |
+| Abstention accuracy | 1.000 | not run |
+| Top-hit language match (answerable) | 1.000 | not run |
+| Mean latency | 1372 ms | not run |
+
+Context precision is real for this validation slice: hybrid retrieval put the expected topics high in the top 8. The answer path did not use those hits.
+
+After this run, the filter prompt sent to the model was limited to 4 chunks of 450 characters, and an empty grader now falls back to distinctive-token overlap. Those changes are in the code and are **not** reflected in the table above. Re-run `make eval` with a funded OpenRouter key before treating any answer metric as a result.
 <!-- EVAL_TABLE_END -->
 
 ## Sample corpus
