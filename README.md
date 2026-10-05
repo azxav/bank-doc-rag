@@ -1,8 +1,10 @@
 # bank-doc-rag
 
-I built a multilingual RAG system over synthetic bank-style documents. My stack is a LangGraph flow on Qdrant hybrid retrieval (dense plus BM25), answers with `[doc_id p.N cM]` citations, an offline demo that never calls a chat model, and a fixed golden set for evals. Prometheus exposes metrics. Docker Compose boots the API and Qdrant.
+Personal project by Azizbek (azxav).
 
-Northwind Community Bank exists only inside the sample files. The documents are synthetic. I did not use customer data.
+Multilingual RAG over synthetic bank-style documents. A LangGraph flow retrieves from Qdrant with hybrid search (dense plus BM25) and answers with `[doc_id p.N cM]` citations. An offline demo never calls a chat model. A fixed golden set drives evals. Prometheus exposes metrics. Docker Compose boots the API and Qdrant.
+
+Northwind Community Bank exists only inside the sample files. The documents are synthetic. No customer data is used.
 
 OpenRouter is optional. `make test` and `make demo-offline` do not call it. Live `/ask` and `make eval` do, and they need a key with credit.
 
@@ -83,7 +85,7 @@ Health: `GET /health`. Metrics: `GET /metrics`. Docs: `GET /docs`.
 
 ## Evaluation
 
-I wrote 40 golden questions: 8 validation, 32 test. The validation split is the held-out slice for prompt changes. Prompts in the run below are `v1`. I did not edit them from test scores, and I did not score the test split.
+The golden set has 40 questions: 8 validation, 32 test. The validation split is the held-out slice for prompt changes. Prompts in the run below are `v1`. They were not edited from test scores. The test split was not scored.
 
 - **Faithfulness** and **answer relevancy** are an LLM judge in the RAGAS style, 0 to 1. This repo does not import the RAGAS library.
 - **Context precision** is the RAGAS rank-weighted score over retrieved topics listed on the golden item. Unanswerable items are left out because they have no relevant topic.
@@ -91,9 +93,9 @@ I wrote 40 golden questions: 8 validation, 32 test. The validation split is the 
 - **Key-fact accuracy** requires the golden figures as numeric tokens. **Abstention accuracy** is the share of unanswerable items that refused.
 
 <!-- EVAL_TABLE_START -->
-Partial validation run only. I ran `python -m evals.main --split val` on 2026-10-05. Chat model resolved to `openai/gpt-6-luna`. Embeddings: `openai/text-embedding-3-small`. Search mode: `hybrid` on all 8 questions. 45 chunks indexed. Artifact: `evals/reports/val.json`.
+Partial validation run only. Validation run on 2026-10-05: `python -m evals.main --split val`. Chat model resolved to `openai/gpt-6-luna`. Embeddings: `openai/text-embedding-3-small`. Search mode: `hybrid` on all 8 questions. 45 chunks indexed. Artifact: `evals/reports/val.json`.
 
-I did not run the test split (n=32). OpenRouter returned HTTP 402: a completion-token cap ("can only afford 255"), then `Prompt tokens limit exceeded: 998 > 871`, then `Insufficient credits. This account never purchased credits.` A later one-token embedding and a 16-token chat completion also returned 402.
+Test split not run (n=32). OpenRouter returned HTTP 402: a completion-token cap ("can only afford 255"), then `Prompt tokens limit exceeded: 998 > 871`, then `Insufficient credits. This account never purchased credits.` A later one-token embedding and a 16-token chat completion also returned 402.
 
 Every validation answer abstained. Citation rate and key-fact accuracy are 0 because no answer was generated. Faithfulness and answer relevancy average the 3 judge calls that returned a score. The other 5 judge calls failed. One of the three scored items is an answerable refusal marked faithfulness 0. Abstention accuracy is 1.0 because the two unanswerable items also abstained. Empty cells are not filled in.
 
@@ -111,7 +113,7 @@ Every validation answer abstained. Citation rate and key-fact accuracy are 0 bec
 
 Context precision is a retrieval result on this validation slice. The answer path did not use the hits.
 
-After that run I limited grader prompts to 4 chunks of 450 characters, and an empty grader can fall back to distinctive-token overlap. Those edits are not in the table. Re-score before reading the table as the current answer quality.
+After that run, grader prompts were limited to 4 chunks of 450 characters, and an empty grader can fall back to distinctive-token overlap. Those edits are not in the table. Re-score before reading the table as the current answer quality.
 
 When the key has credit:
 
@@ -130,11 +132,11 @@ python -m evals.main --split all
 ## Limitations
 
 - The corpus is small and synthetic. The validation numbers do not transfer to a real archive.
-- I did not measure test-split faithfulness, relevancy, context precision, citation rate, or key-fact accuracy. The blocker is OpenRouter HTTP 402, not a missing harness.
+- Test-split faithfulness, relevancy, context precision, citation rate, and key-fact accuracy were not measured. The blocker is OpenRouter HTTP 402, not a missing harness.
 - The offline demo quotes retrieved text. It is not the live chat model and it is not the eval.
 - The judge is one model scoring another. Five of eight validation judge calls failed.
 - Hybrid search needs Qdrant sparse vectors. Keyword blending is the fallback.
-- I did not add speech-to-text, a scheduler, or a live core-banking connector.
+- Speech-to-text, a scheduler, and a live core-banking connector are not included.
 - The demo JWT is one shared password.
 - Langfuse stays off unless both Langfuse keys are set and the package imports.
 
