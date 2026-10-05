@@ -10,7 +10,7 @@ from app.core.logging import logger
 from app.core.prompts import ANSWER_SYSTEM, FILTER_SYSTEM
 from app.services.sparse import lexical_fallback
 from app.services.store import Hit, VectorStore
-from app.utils.citations import append_missing_citations
+from app.utils.citations import append_missing_citations, format_citation
 from app.utils.json_extract import parse_json_object
 from app.utils.language import refusal_for
 
@@ -65,6 +65,10 @@ class RAGGraph:
         retrieved = state.get("retrieved") or []
         if not retrieved:
             return {"filtered": []}
+        if self.chat is None:
+            filtered = lexical_fallback(state["question"], retrieved)
+            logger.info("filtered_offline", kept=len(filtered), retrieved=len(retrieved))
+            return {"filtered": filtered}
         lines = [_chunk_line(item) for item in retrieved[:4]]
         user = f"Question: {state['question']}\n\nChunks:\n" + "\n".join(lines)
         wanted: set[str] = set()
@@ -107,6 +111,13 @@ class RAGGraph:
                 "abstained": True,
                 "citations_appended": False,
             }
+        if self.chat is None:
+            return {
+                "answer": _extractive_answer(filtered[:2]),
+                "sources": sources[:2],
+                "abstained": False,
+                "citations_appended": False,
+            }
         lines = [_chunk_line(item) for item in filtered[:4]]
         user = f"Question: {state['question']}\n\nChunks:\n" + "\n".join(lines)
         answer = self.chat.complete(
@@ -122,6 +133,16 @@ class RAGGraph:
             "abstained": False,
             "citations_appended": appended,
         }
+
+
+def _extractive_answer(chunks: list[dict]) -> str:
+    """Quote retrieved text and attach citations. No chat model."""
+    lines = []
+    for item in chunks:
+        text = " ".join(item["text"].split())
+        citation = format_citation(item["doc_id"], int(item["page"]), int(item["chunk_id"]))
+        lines.append(f"{text} {citation}")
+    return "\n".join(lines)
 
 
 def _chunk_line(item: dict) -> str:

@@ -1,8 +1,10 @@
 # bank-doc-rag
 
-Personal portfolio project: a multilingual RAG service over **synthetic** bank-style documents. It is not a bank product, it does not use customer data, and it is not affiliated with any employer or bank.
+Personal portfolio project. Multilingual RAG over synthetic bank-style documents: a LangGraph flow on Qdrant, answers with `[doc_id p.N cM]` citations, Prometheus metrics, and a fixed golden set. Docker Compose boots the API and Qdrant. The scaffold follows an MIT FastAPI and LangGraph template.
 
-Ask a question in Uzbek, Russian, or English. A LangGraph flow retrieves hybrid hits from Qdrant, drops chunks that do not state the needed fact, and answers with citations of the form `[doc_id p.N cM]`.
+This is not a bank, not a job at a bank, and not customer data. Northwind Community Bank exists only inside the sample files.
+
+OpenRouter is optional. `make test` and `make demo-offline` do not call it. Live `/ask` and `make eval` do, and they need a key with credit.
 
 ## Architecture
 
@@ -11,42 +13,65 @@ flowchart LR
   client[Client] -->|POST /ask| api[FastAPI]
   api --> graph[LangGraph]
   graph --> retrieve[Retrieve]
-  retrieve --> qdrant[(Qdrant dense + BM25)]
+  retrieve --> qdrant[(Qdrant dense plus BM25)]
   qdrant --> filter[Filter]
   filter --> answer[Answer with citations]
   answer --> api
   api --> metrics["/metrics"]
-  graph -.-> langfuse[Langfuse if keys are set]
+  filter -.-> offline[Offline extractive citations]
+  answer -.-> openrouter[OpenRouter chat when a key is set]
+  retrieve -.-> embeddings[OpenRouter embeddings or local hash vectors]
+  graph -.-> langfuse[Langfuse only if keys are set]
 ```
 
-Retrieval uses a dense OpenRouter embedding and a hashed BM25-style sparse vector, fused with Qdrant reciprocal rank fusion. If that fusion call fails, retrieval falls back to dense search blended with keyword overlap.
+Default retrieval is hybrid: a dense vector plus a hashed BM25 sparse vector, fused in Qdrant with reciprocal rank fusion. If fusion fails, retrieval uses dense scores blended with keyword overlap.
 
-The chat model defaults to `openai/gpt-6-luna` on OpenRouter. If that id returns HTTP 404, the client lists models and switches to the closest available Luna chat model, then logs the id it actually used. Embeddings stay on `openai/text-embedding-3-small`.
+Live chat defaults to `openai/gpt-6-luna`. If that id returns HTTP 404, the client picks the closest listed Luna chat model and logs the id it used. Live embeddings default to `openai/text-embedding-3-small`.
+
+`make demo-offline` never calls chat. It indexes the samples with local hash vectors, keeps chunks by distinctive-token overlap, and quotes those chunks with citations.
 
 ## Run
 
+Offline, no API key:
+
 ```bash
-cp .env.example .env
-# put your OpenRouter key in OPENROUTER_API_KEY
+make demo-offline
+```
 
-docker compose up -d --build
-docker compose run --rm api python -m scripts.ingest
+That prints three questions as JSON. Two quote a sample chunk and cite it. The car-leasing question abstains because the corpus does not contain it.
 
+To serve the same offline path:
+
+```bash
+OFFLINE_DEMO=true python -m uvicorn app.main:app --port 8000
 curl -s http://localhost:8000/ask \
   -H 'content-type: application/json' \
   -d '{"question":"What is the maximum consumer cash loan amount in the Northwind sample?"}'
 ```
 
-`docker compose run --rm api python -m scripts.ingest` is the one-command ingest. It talks to the `qdrant` service on the compose network.
+`OFFLINE_DEMO=true` uses an in-memory index and ignores `QDRANT_URL`.
 
-Without Docker, point `QDRANT_URL` at a local Qdrant and run:
+Checks that CI runs, still with no key:
 
 ```bash
-make ingest
-make dev
+make test
+make lint
 ```
 
-Demo login (optional; `/ask` is open unless `AUTH_REQUIRED=true`):
+Live stack, only after `OPENROUTER_API_KEY` is set in `.env`:
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+docker compose run --rm api python -m scripts.ingest
+curl -s http://localhost:8000/ask \
+  -H 'content-type: application/json' \
+  -d '{"question":"What is the maximum consumer cash loan amount in the Northwind sample?"}'
+```
+
+`docker compose run --rm api python -m scripts.ingest` is the one-command ingest against the Compose Qdrant. Without Docker, point `QDRANT_URL` at a local Qdrant and run `make ingest` then `make dev`.
+
+Demo login is optional. `/ask` stays open unless `AUTH_REQUIRED=true`.
 
 ```bash
 curl -s http://localhost:8000/api/v1/auth/login \
@@ -54,33 +79,23 @@ curl -s http://localhost:8000/api/v1/auth/login \
   -d '{"username":"demo","password":"demo-not-a-bank"}'
 ```
 
-Health: `GET /health`. Metrics: `GET /metrics`. Interactive docs: `GET /docs`.
-
-`make eval` indexes the sample corpus in an in-memory Qdrant, runs the golden set, and writes `evals/reports/test.json`. It needs `OPENROUTER_API_KEY`. CI does not call OpenRouter.
-
-```bash
-make test    # unit tests, no API key
-make lint
-make eval    # local only
-```
+Health: `GET /health`. Metrics: `GET /metrics`. Docs: `GET /docs`.
 
 ## Evaluation
 
-40 golden questions: 8 validation, 32 test. The validation split is reserved for prompt changes. The table below is the **test** split only. Prompts are `v1` and were not edited from test scores.
+40 golden questions: 8 validation, 32 test. The validation split is the held-out slice for prompt changes. Prompts in the run below are `v1`. They were not edited from test scores, and the test split was not scored.
 
-Metrics:
-
-- **Faithfulness** and **answer relevancy** are an LLM judge in the RAGAS style (0–1), not the RAGAS library.
-- **Context precision** is the RAGAS rank-weighted formula over retrieved topics that the golden item marks as relevant. Unanswerable items are excluded because they have no relevant topic.
-- **Citation rate** is the share of answerable items whose final answer contains at least one `[doc_id p.N cM]` that matches a filtered source. If the model omits citations, the answer node appends them. **Model citation rate** is the same check before that safety net.
-- **Key-fact accuracy** checks that required figures appear as numeric tokens. **Abstention accuracy** is the share of unanswerable items that refused.
+- **Faithfulness** and **answer relevancy** are an LLM judge in the RAGAS style, 0 to 1. This repo does not import the RAGAS library.
+- **Context precision** is the RAGAS rank-weighted score over retrieved topics listed on the golden item. Unanswerable items are left out because they have no relevant topic.
+- **Citation rate** is the share of answerable items whose final answer has at least one `[doc_id p.N cM]` matching a filtered source. If a live model omits citations, the answer node appends them. **Model citation rate** is the check before that append.
+- **Key-fact accuracy** requires the golden figures as numeric tokens. **Abstention accuracy** is the share of unanswerable items that refused.
 
 <!-- EVAL_TABLE_START -->
-Ran `python -m evals.main --split val` on 2026-10-05. Chat model resolved to `openai/gpt-6-luna` (the requested id; no 404 fallback). Embeddings: `openai/text-embedding-3-small`. Search mode on every validation question: `hybrid`. 45 chunks indexed. The **test split did not run.**
+Partial validation run only. Command: `python -m evals.main --split val` on 2026-10-05. Chat model resolved to `openai/gpt-6-luna`. Embeddings: `openai/text-embedding-3-small`. Search mode: `hybrid` on all 8 questions. 45 chunks indexed. Artifact: `evals/reports/val.json`.
 
-The key then stopped working. OpenRouter returned HTTP 402: first a completion-token cap ("can only afford 255"), then `Prompt tokens limit exceeded: 998 > 871`, then `Insufficient credits. This account never purchased credits.` A probe after the run got 402 for both a one-token embedding and a 16-token chat completion, so the test split could not be scored. Report file: `evals/reports/val.json`.
+The test split (n=32) did not run. OpenRouter returned HTTP 402: a completion-token cap ("can only afford 255"), then `Prompt tokens limit exceeded: 998 > 871`, then `Insufficient credits. This account never purchased credits.` A later one-token embedding and a 16-token chat completion also returned 402.
 
-Every validation answer abstained. On the calls that returned HTTP 200, the grader's relevant set was empty, so citation rate and key-fact accuracy are 0 because no answer was generated. That is a failure of this run, not a completed quality score. Abstention accuracy is 1.0 because the two unanswerable items also abstained. Faithfulness 0.667 and answer relevancy 1.000 are the mean of the **3** items the judge managed to score (5 judge calls failed). One of those three is an answerable question whose refusal was scored faithfulness 0.
+Every validation answer abstained. Citation rate and key-fact accuracy are 0 because no answer was generated. Faithfulness and answer relevancy average the 3 judge calls that returned a score. The other 5 judge calls failed. One of the three scored items is an answerable refusal marked faithfulness 0. Abstention accuracy is 1.0 because the two unanswerable items also abstained. Empty cells are not filled in.
 
 | Metric | Validation (n=8) | Test (n=32) |
 | --- | ---: | ---: |
@@ -94,26 +109,37 @@ Every validation answer abstained. On the calls that returned HTTP 200, the grad
 | Top-hit language match (answerable) | 1.000 | not run |
 | Mean latency | 1372 ms | not run |
 
-Context precision is real for this validation slice: hybrid retrieval put the expected topics high in the top 8. The answer path did not use those hits.
+Context precision is a retrieval result on this validation slice. The answer path did not use the hits.
 
-After this run, the filter prompt sent to the model was limited to 4 chunks of 450 characters, and an empty grader now falls back to distinctive-token overlap. Those changes are in the code and are **not** reflected in the table above. Re-run `make eval` with a funded OpenRouter key before treating any answer metric as a result.
+After that run, grader prompts were limited to 4 chunks of 450 characters, and an empty grader can fall back to distinctive-token overlap. Those edits are not in the table. Re-score before reading the table as the current answer quality.
+
+When the key has credit:
+
+```bash
+cp .env.example .env   # set OPENROUTER_API_KEY
+make eval              # test split, writes evals/reports/test.json
+python -m evals.main --split val
+python -m evals.main --split all
+```
 <!-- EVAL_TABLE_END -->
 
 ## Sample corpus
 
-`data/samples/` has 15 short markdown files: five fictional topics (retail loan, debit-card fees, KYC, deposits, SWIFT) in English, Russian, and Uzbek. Every file is marked sample / synthetic and is not affiliated with any bank. The institution name Northwind Community Bank is fictional. Regenerate with `python data/build_samples.py`.
+`data/samples/` has 15 short markdown files: retail loan, debit-card fees, KYC, deposits, and SWIFT, each in English, Russian, and Uzbek. Every file says it is synthetic and not affiliated with any bank. Regenerate with `python data/build_samples.py`.
 
 ## Limitations
 
-- The corpus is tiny and synthetic. Scores do not transfer to a real bank archive.
-- The judge is one model scoring another, so faithfulness and relevancy move when the model or prompt changes.
-- Hybrid search depends on Qdrant sparse vectors. The keyword fallback is there when fusion is unavailable.
-- There is no speech-to-text, orchestration scheduler, or live core-banking connector.
-- Demo JWT uses one shared password. Do not point this at real customers.
-- Langfuse tracing is a no-op unless `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set and the `langfuse` package imports.
+- The corpus is small and synthetic. The validation numbers do not transfer to a real archive.
+- Test-split faithfulness, relevancy, context precision, citation rate, and key-fact accuracy were not measured. The blocker is OpenRouter HTTP 402, not a missing harness.
+- The offline demo quotes retrieved text. It is not the live chat model and it is not the eval.
+- The judge is one model scoring another. Five of eight validation judge calls failed.
+- Hybrid search needs Qdrant sparse vectors. Keyword blending is the fallback.
+- No speech-to-text, scheduler, or live core-banking connector.
+- The demo JWT is one shared password.
+- Langfuse stays off unless both Langfuse keys are set and the package imports.
 
 ## License and credit
 
 MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
 
-Scaffold inspired by [wassim249/fastapi-langgraph-agent-production-ready-template](https://github.com/wassim249/fastapi-langgraph-agent-production-ready-template) (MIT, Copyright (c) 2025 Wassim EL BAKKOURI): FastAPI layout, LangGraph workflow shape, Prometheus metrics, optional Langfuse hook, demo JWT, Compose, CI, and a scripted eval harness. The README, sample documents, retrieval flow, and golden set here were written for this portfolio.
+Scaffold inspired by [wassim249/fastapi-langgraph-agent-production-ready-template](https://github.com/wassim249/fastapi-langgraph-agent-production-ready-template) (MIT, Copyright (c) 2025 Wassim EL BAKKOURI): FastAPI layout, LangGraph workflow shape, Prometheus metrics, optional Langfuse hook, demo JWT, Compose, CI, and a scripted eval harness. The sample documents, retrieval flow, offline demo, and golden set were written for this portfolio.

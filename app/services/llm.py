@@ -167,6 +167,9 @@ class OpenRouterChat:
 
 
 class OpenRouterEmbeddings:
+    def __init__(self) -> None:
+        self.model_name = settings.EMBEDDING_MODEL
+
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         vectors: list[list[float]] = []
         for start in range(0, len(texts), 16):
@@ -198,7 +201,9 @@ class OpenRouterEmbeddings:
 
 
 class HashEmbeddings:
-    """Deterministic bag-of-tokens vectors for unit tests. Not used in production."""
+    """Deterministic bag-of-tokens vectors for tests and the offline demo."""
+
+    model_name = "hash-bag-of-tokens"
 
     def __init__(self, dim: int = 64) -> None:
         self.dim = dim

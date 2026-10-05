@@ -84,6 +84,7 @@ class Settings:
         self.QDRANT_LOCATION = os.getenv("QDRANT_LOCATION", "")
         self.QDRANT_PATH = os.getenv("QDRANT_PATH", "")
         self.RETRIEVAL_TOP_K = int(os.getenv("RETRIEVAL_TOP_K", "8"))
+        self.OFFLINE_DEMO = _flag("OFFLINE_DEMO", False)
 
         self.JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", LOCAL_JWT_SECRET)
         self.JWT_ALGORITHM = "HS256"

@@ -2,10 +2,10 @@
 PY ?= python3
 export PATH := $(HOME)/.local/bin:$(PATH)
 
-.PHONY: help install lint format test ingest eval dev docker-up docker-down docker-ingest
+.PHONY: help install lint format test ingest eval dev demo-offline docker-up docker-down docker-ingest
 
 help:
-	@echo "make install | lint | test | ingest | eval | dev | docker-up | docker-ingest | docker-down"
+	@echo "make install | lint | test | demo-offline | ingest | eval | dev | docker-up | docker-ingest | docker-down"
 
 install:
 	$(PY) -m pip install -e ".[dev]"
@@ -20,6 +20,9 @@ format:
 
 test:
 	APP_ENV=test $(PY) -m pytest -q
+
+demo-offline:
+	APP_ENV=test OFFLINE_DEMO=true $(PY) -m scripts.demo_offline
 
 dev:
 	set -a && . ./.env && set +a && $(PY) -m uvicorn app.main:app --reload --port 8000
