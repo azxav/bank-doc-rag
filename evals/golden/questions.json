@@ -1,0 +1,362 @@
+[
+  {
+    "id": "v01",
+    "split": "val",
+    "type": "fact",
+    "language": "en",
+    "question": "During the first 6 months, what is the early repayment fee on a Northwind consumer cash loan?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["1.0"]
+  },
+  {
+    "id": "v02",
+    "split": "val",
+    "type": "fact",
+    "language": "ru",
+    "question": "Какова плата за выпуск дебетовой карты Gold в образце Northwind?",
+    "expected_topics": ["card-fees"],
+    "required_facts": ["150000"]
+  },
+  {
+    "id": "v03",
+    "split": "val",
+    "type": "fact",
+    "language": "uz",
+    "question": "River Call omonatining minimal qoldig'i qancha?",
+    "expected_topics": ["deposits"],
+    "required_facts": ["500000"]
+  },
+  {
+    "id": "v04",
+    "split": "val",
+    "type": "cross",
+    "language": "en",
+    "question": "When does a Northwind consumer loan require a guarantor, and when is a source-of-funds declaration required?",
+    "expected_topics": ["retail-loan", "kyc"],
+    "required_facts": ["30000000", "100000000"]
+  },
+  {
+    "id": "v05",
+    "split": "val",
+    "type": "cross",
+    "language": "ru",
+    "question": "Сравните годовую плату карты Gold и максимальную комиссию исходящего SWIFT в образце Northwind.",
+    "expected_topics": ["card-fees", "fx-transfers"],
+    "required_facts": ["120000", "500000"]
+  },
+  {
+    "id": "v06",
+    "split": "val",
+    "type": "unanswerable",
+    "language": "en",
+    "question": "What annual rate does the Northwind sample charge for car leasing?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "v07",
+    "split": "val",
+    "type": "unanswerable",
+    "language": "uz",
+    "question": "Sayohat yuk sug'urtasining yillik mukofoti qancha?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "v08",
+    "split": "val",
+    "type": "fact",
+    "language": "en",
+    "question": "How many business days does a Northwind consumer-loan decision take when the client is not a pre-approved salaried client?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["3"]
+  },
+  {
+    "id": "t01",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What is the maximum consumer cash loan amount in the Northwind sample?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["150000000"]
+  },
+  {
+    "id": "t02",
+    "split": "test",
+    "type": "fact",
+    "language": "ru",
+    "question": "Какова минимальная сумма потребительского кредита наличными в образце Northwind?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["5000000"]
+  },
+  {
+    "id": "t03",
+    "split": "test",
+    "type": "fact",
+    "language": "uz",
+    "question": "Maoshli mijozlar uchun iste'mol krediti yillik nominal stavkasi qancha?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["24.9"]
+  },
+  {
+    "id": "t04",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What nominal annual rate does the Northwind sample charge a self-employed consumer-loan client?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["27.5"]
+  },
+  {
+    "id": "t05",
+    "split": "test",
+    "type": "fact",
+    "language": "ru",
+    "question": "Каким процентом просроченной суммы ограничена пеня по потребительскому кредиту Northwind?",
+    "expected_topics": ["retail-loan"],
+    "required_facts": ["15"]
+  },
+  {
+    "id": "t06",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What is the Classic debit card issuance fee in the Northwind sample?",
+    "expected_topics": ["card-fees"],
+    "required_facts": ["50000"]
+  },
+  {
+    "id": "t07",
+    "split": "test",
+    "type": "fact",
+    "language": "uz",
+    "question": "Xalqaro bankomatdan yechish komissiyasi qancha?",
+    "expected_topics": ["card-fees"],
+    "required_facts": ["2", "20000"]
+  },
+  {
+    "id": "t08",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What FX markup does the Northwind sample add to a card purchase in a foreign currency?",
+    "expected_topics": ["card-fees"],
+    "required_facts": ["1.5"]
+  },
+  {
+    "id": "t09",
+    "split": "test",
+    "type": "fact",
+    "language": "ru",
+    "question": "До какой суммы включительно бесконтактная покупка в образце Northwind проходит без PIN?",
+    "expected_topics": ["card-fees"],
+    "required_facts": ["100000"]
+  },
+  {
+    "id": "t10",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "How many digits does a PINFL have in the Northwind KYC sample?",
+    "expected_topics": ["kyc"],
+    "required_facts": ["14"]
+  },
+  {
+    "id": "t11",
+    "split": "test",
+    "type": "fact",
+    "language": "uz",
+    "question": "Mijoz hujjatlari necha oyda yangilanadi?",
+    "expected_topics": ["kyc"],
+    "required_facts": ["36"]
+  },
+  {
+    "id": "t12",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What is the nominal annual rate and the term in months of Maple Savings?",
+    "expected_topics": ["deposits"],
+    "required_facts": ["18", "12"]
+  },
+  {
+    "id": "t13",
+    "split": "test",
+    "type": "fact",
+    "language": "ru",
+    "question": "Какова минимальная сумма открытия вклада Maple Savings?",
+    "expected_topics": ["deposits"],
+    "required_facts": ["1000000"]
+  },
+  {
+    "id": "t14",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "How many days of notice does River Call require for a withdrawal above 10 000 000 UZS?",
+    "expected_topics": ["deposits"],
+    "required_facts": ["7", "10000000"]
+  },
+  {
+    "id": "t15",
+    "split": "test",
+    "type": "fact",
+    "language": "uz",
+    "question": "Namunadagi hayoliy omonat himoyasi bitta omonatchi uchun qancha summani qoplaydi?",
+    "expected_topics": ["deposits"],
+    "required_facts": ["200000000"]
+  },
+  {
+    "id": "t16",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What are the minimum and maximum Northwind fees in UZS for an outbound personal SWIFT transfer?",
+    "expected_topics": ["fx-transfers"],
+    "required_facts": ["50000", "500000"]
+  },
+  {
+    "id": "t17",
+    "split": "test",
+    "type": "fact",
+    "language": "ru",
+    "question": "До которого часа по Ташкенту принимается SWIFT в тот же день и какие валюты поддерживаются?",
+    "expected_topics": ["fx-transfers"],
+    "required_facts": ["16:00", "USD", "EUR", "GBP", "RUB"]
+  },
+  {
+    "id": "t18",
+    "split": "test",
+    "type": "fact",
+    "language": "en",
+    "question": "What does the Northwind sample charge to replace a lost Classic debit card and a lost Gold debit card?",
+    "expected_topics": ["card-fees"],
+    "required_facts": ["50000", "150000"]
+  },
+  {
+    "id": "t19",
+    "split": "test",
+    "type": "cross",
+    "language": "en",
+    "question": "During the first 6 months, what is the consumer-loan early repayment fee, and what happens to the current month of Maple Savings interest if the client withdraws before maturity?",
+    "expected_topics": ["retail-loan", "deposits"],
+    "required_facts": ["1.0"]
+  },
+  {
+    "id": "t20",
+    "split": "test",
+    "type": "cross",
+    "language": "en",
+    "question": "A client wants to deposit 150 000 000 UZS in cash. Does the KYC source-of-funds rule apply, and what is the fictional per-depositor protection cap?",
+    "expected_topics": ["kyc", "deposits"],
+    "required_facts": ["100000000", "200000000"]
+  },
+  {
+    "id": "t21",
+    "split": "test",
+    "type": "cross",
+    "language": "en",
+    "question": "Which percentage is higher in the Northwind sample: the card FX markup or the outbound SWIFT percentage fee?",
+    "expected_topics": ["card-fees", "fx-transfers"],
+    "required_facts": ["1.5", "0.3"]
+  },
+  {
+    "id": "t22",
+    "split": "test",
+    "type": "cross",
+    "language": "ru",
+    "question": "За сколько рабочих дней Northwind решает по кредиту предодобренного зарплатного клиента и сколько рабочих дней занимает комплаенс-проверка SWIFT выше 10 000 USD?",
+    "expected_topics": ["retail-loan", "fx-transfers"],
+    "required_facts": ["1", "2"]
+  },
+  {
+    "id": "t23",
+    "split": "test",
+    "type": "cross",
+    "language": "en",
+    "question": "What is the unsecured consumer-loan ceiling, and what is the River Call minimum balance?",
+    "expected_topics": ["retail-loan", "deposits"],
+    "required_facts": ["30000000", "500000"]
+  },
+  {
+    "id": "t24",
+    "split": "test",
+    "type": "cross",
+    "language": "uz",
+    "question": "14 yoshgacha mijozga debet karta beriladimi va Classic kartani chiqarish qancha turadi?",
+    "expected_topics": ["kyc", "card-fees"],
+    "required_facts": ["14", "50000"]
+  },
+  {
+    "id": "t25",
+    "split": "test",
+    "type": "cross",
+    "language": "en",
+    "question": "What is the outbound personal SWIFT percentage fee, and what is the minimum charge at a domestic ATM outside the Northwind network?",
+    "expected_topics": ["fx-transfers", "card-fees"],
+    "required_facts": ["0.3", "3000"]
+  },
+  {
+    "id": "t26",
+    "split": "test",
+    "type": "cross",
+    "language": "en",
+    "question": "Above what consumer-loan amount is a guarantor required, and what is the Gold debit card annual fee?",
+    "expected_topics": ["retail-loan", "card-fees"],
+    "required_facts": ["30000000", "120000"]
+  },
+  {
+    "id": "t27",
+    "split": "test",
+    "type": "unanswerable",
+    "language": "en",
+    "question": "What is the annual fee for a Northwind safe deposit box?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "t28",
+    "split": "test",
+    "type": "unanswerable",
+    "language": "en",
+    "question": "What mortgage APR does the Northwind sample publish?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "t29",
+    "split": "test",
+    "type": "unanswerable",
+    "language": "ru",
+    "question": "В котором часу открывается отделение Northwind в Самарканде?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "t30",
+    "split": "test",
+    "type": "unanswerable",
+    "language": "uz",
+    "question": "Brokerlik hisobining oylik tarifi qancha?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "t31",
+    "split": "test",
+    "type": "unanswerable",
+    "language": "en",
+    "question": "What employee discount does Northwind give on a consumer loan?",
+    "expected_topics": [],
+    "required_facts": []
+  },
+  {
+    "id": "t32",
+    "split": "test",
+    "type": "unanswerable",
+    "language": "en",
+    "question": "What student overdraft limit does the Northwind sample publish?",
+    "expected_topics": [],
+    "required_facts": []
+  }
+]
